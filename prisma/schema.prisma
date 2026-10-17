@@ -1,0 +1,314 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TENANT
+  TECHNICIAN
+}
+enum TicketStatus {
+  OPEN
+  TRIAGE
+  READY_FOR_ASSIGNMENT
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+enum Priority {
+  EMERGENCY
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  phone String?
+  passwordHash String
+  role Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  requests MaintenanceRequest[]
+  comments TicketComment[]
+  technician TechnicianProfile?
+  tenantProfile Tenant?
+  tenantOccupancies TenantOccupancy[]
+  notifications Notification[]
+  auditLogs AuditLog[]
+  mobileSessions MobileSession[]
+}
+
+model MobileSession {
+  id String @id @default(cuid())
+  userId String
+  refreshTokenHash String @unique
+  expiresAt DateTime
+  lastUsedAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+model Property {
+  id String @id @default(cuid())
+  name String
+  address String
+  city String @default("Riyadh")
+  status String @default("ACTIVE")
+  deletedAt DateTime?
+  units Unit[]
+  technicians TechnicianProfile[]
+  tenants Tenant[]
+  requests MaintenanceRequest[]
+  tickets Ticket[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+}
+model Unit {
+  id String @id @default(cuid())
+  label String
+  propertyId String
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenants Tenant[]
+  occupancies TenantOccupancy[]
+  tickets Ticket[]
+  requests MaintenanceRequest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+  @@unique([propertyId, label])
+  @@index([propertyId])
+}
+model Category {
+  id String @id @default(cuid())
+  name String @unique
+  description String?
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  tickets Ticket[]
+  requests MaintenanceRequest[]
+  skills TechnicianSkill[]
+}
+model Tenant {
+  id String @id @default(cuid())
+  userId String @unique
+  propertyId String
+  unitId String
+  status String @default("ACTIVE")
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  occupancies TenantOccupancy[]
+  @@index([propertyId, unitId, status])
+}
+model TenantOccupancy {
+  id String @id @default(cuid())
+  userId String
+  unitId String
+  tenantId String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  startedAt DateTime @default(now())
+  endedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+  @@index([userId])
+  @@index([unitId])
+}
+model TechnicianProfile {
+  id String @id @default(cuid())
+  userId String @unique
+  propertyId String?
+  phone String?
+  availability String @default("AVAILABLE")
+  active Boolean @default(true)
+  deletedAt DateTime?
+  workload Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id])
+  skills TechnicianSkill[]
+  assignments TicketAssignment[]
+  @@index([propertyId, active])
+}
+model TechnicianSkill {
+  id String @id @default(cuid())
+  name String
+  categoryId String?
+  technicianId String
+  technician TechnicianProfile @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+  @@unique([technicianId, name])
+}
+model MaintenanceRequest {
+  id String @id @default(cuid())
+  title String
+  description String
+  category String @default("General")
+  categoryId String?
+  priority Priority @default(MEDIUM)
+  status String @default("PENDING")
+  propertyId String
+  unitId String
+  deletedAt DateTime?
+  submittedAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String
+  updatedById String?
+  createdBy User @relation(fields: [createdById], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+  unit Unit @relation(fields: [unitId], references: [id])
+  categoryRef Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  ticket Ticket?
+  attachments Attachment[]
+  @@index([createdById, submittedAt])
+}
+model Ticket {
+  id String @id @default(cuid())
+  code String @unique
+  issue String
+  category String
+  categoryId String?
+  priority Priority
+  status TicketStatus @default(OPEN)
+  deletedAt DateTime?
+  billingCompleted Boolean @default(false)
+  billingCompletedAt DateTime?
+  billingCompletedById String?
+  slaDue DateTime?
+  propertyId String
+  unitId String
+  requestId String? @unique
+  property Property @relation(fields: [propertyId], references: [id])
+  unit Unit @relation(fields: [unitId], references: [id])
+  request MaintenanceRequest? @relation(fields: [requestId], references: [id])
+  categoryRef Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  assignments TicketAssignment[]
+  history TicketStatusHistory[]
+  comments TicketComment[]
+  appointments Appointment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+  @@index([status, priority])
+  @@index([propertyId, unitId])
+}
+model TicketAssignment {
+  id String @id @default(cuid())
+  ticketId String
+  technicianId String
+  approvedById String?
+  approvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  technician TechnicianProfile @relation(fields: [technicianId], references: [id])
+  @@index([technicianId])
+}
+model TicketStatusHistory {
+  id String @id @default(cuid())
+  ticketId String
+  fromStatus TicketStatus?
+  toStatus TicketStatus
+  note String?
+  actorId String?
+  createdAt DateTime @default(now())
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  @@index([ticketId, createdAt])
+}
+model TicketComment {
+  id String @id @default(cuid())
+  ticketId String
+  authorId String
+  body String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  updatedById String?
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+}
+model Attachment {
+  id String @id @default(cuid())
+  requestId String
+  filename String
+  mimeType String
+  url String @db.MediumText
+  request MaintenanceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+}
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  title String
+  body String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, readAt])
+}
+model Appointment {
+  id String @id @default(cuid())
+  ticketId String
+  technicianId String?
+  startsAt DateTime
+  endsAt DateTime
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  @@index([startsAt])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  entity String
+  entityId String
+  action String
+  actorId String?
+  before Json?
+  after Json?
+  createdAt DateTime @default(now())
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([entity, entityId, createdAt])
+  @@index([actorId, createdAt])
+}
