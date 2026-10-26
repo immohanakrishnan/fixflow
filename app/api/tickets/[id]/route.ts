@@ -23,6 +23,15 @@ export async function PATCH(
   if (!body.success)
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   const { technicianId, slaDue, description, ...ticketData } = body.data;
+  if (slaDue) {
+    const due = new Date(slaDue);
+    if (Number.isNaN(due.getTime()) || due <= new Date()) {
+      return NextResponse.json(
+        { error: "SLA due date must be in the future" },
+        { status: 400 },
+      );
+    }
+  }
   const id = (await params).id;
   const before = await prisma.ticket.findUnique({
     where: { id },

@@ -82,6 +82,12 @@ const endpoint = (section: string) =>
           ? "/api/tenants"
           : "/api/properties";
 
+function minSlaDateTime() {
+  const date = new Date(Date.now() + 60_000);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function AdminSectionPage({
   section: initialSection,
 }: {
@@ -1409,6 +1415,9 @@ export function TicketEditor({
       .then((rows) => setProperties(Array.isArray(rows) ? rows : []));
   }, []);
   const selectedProperty = properties.find((property) => property.id === form.propertyId);
+  const invalidSla = Boolean(
+    form.slaDue && new Date(form.slaDue).getTime() <= Date.now(),
+  );
   const set = (key: string, value: string) =>
     setForm((current) => ({
       ...current,
@@ -1512,9 +1521,15 @@ export function TicketEditor({
             SLA due date
             <input
               type="datetime-local"
+              min={minSlaDateTime()}
               value={form.slaDue}
               onChange={(e) => set("slaDue", e.target.value)}
             />
+            {invalidSla && (
+              <small className="field-hint sla-error">
+                Select a future date and time.
+              </small>
+            )}
           </label>
         </div>
         <div className="modal-actions">
@@ -1542,7 +1557,10 @@ export function TicketEditor({
             <button
               type="button"
               className="primary-btn large-action"
-              onClick={() => onConvert(form)}
+              disabled={invalidSla}
+              onClick={() => {
+                if (!invalidSla) onConvert(form);
+              }}
             >
               <Plus size={16} /> {mode === "ticket" ? "Update ticket" : "Create as ticket"}
             </button>

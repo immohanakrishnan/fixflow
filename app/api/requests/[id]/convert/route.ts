@@ -23,6 +23,15 @@ export async function POST(
   const body = schema.safeParse(await request.json());
   if (!body.success)
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
+  if (body.data.slaDue) {
+    const due = new Date(body.data.slaDue);
+    if (Number.isNaN(due.getTime()) || due <= new Date()) {
+      return NextResponse.json(
+        { error: "SLA due date must be in the future" },
+        { status: 400 },
+      );
+    }
+  }
   const source = await prisma.maintenanceRequest.findUnique({
     where: { id },
     include: { ticket: true },

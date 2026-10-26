@@ -2586,6 +2586,18 @@ th:first-child {
   color: #5b6b83;
   background: transparent;
 }
+.technician-option .tech-name,
+.technician-option .tech-category {
+  color: #263852 !important;
+  background: transparent !important;
+}
+.technician-option .tech-category {
+  padding: 0 !important;
+  font-weight: 500;
+}
+.technician-option .tech-availability {
+  display: none !important;
+}
 .record-actions {
   display: flex;
   align-items: center;
@@ -3735,4 +3747,11 @@ th:first-child {
 .modal .ticket-detail-grid b,
 .modal .ticket-history b {
   color: #263852;
+}
+.sla-error {
+  color: #c04f55 !important;
+}
+.modal-actions .primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
