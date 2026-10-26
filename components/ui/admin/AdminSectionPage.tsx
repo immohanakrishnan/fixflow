@@ -947,7 +947,8 @@ function TicketForm({
   const matches = techs.filter((t) => {
     const skills = (t.skills ?? []).map((s: any) => s.name.toLowerCase());
     return (
-      skills.includes(form.category.toLowerCase()) || skills.includes("general")
+      (t.availability ?? "AVAILABLE") === "AVAILABLE" &&
+      (skills.includes(form.category.toLowerCase()) || skills.includes("general"))
     );
   });
   const selected = matches.find((t) => t.id === form.technicianId);
@@ -1036,10 +1037,6 @@ function TicketForm({
                     <span className="tech-category">
                       No technician selected
                     </span>
-                    <span className="tech-availability unavailable">
-                      <i />
-                      Unavailable
-                    </span>
                   </button>
                   {matches.map((tech) => (
                     <button
@@ -1058,12 +1055,6 @@ function TicketForm({
                         {(tech.skills ?? [])
                           .map((s: any) => s.name)
                           .join(" · ")}
-                      </span>
-                      <span
-                        className={`tech-availability ${(tech.availability ?? "AVAILABLE").toLowerCase() === "available" ? "available" : "unavailable"}`}
-                      >
-                        <i />
-                        {tech.availability ?? "AVAILABLE"}
                       </span>
                     </button>
                   ))}
@@ -1581,8 +1572,8 @@ function TechnicianPicker({
       skill.name.toLowerCase(),
     );
     return (
-      tech.id === value ||
-      skills.includes(category.toLowerCase()) || skills.includes("general")
+      (tech.availability ?? "AVAILABLE") === "AVAILABLE" &&
+      (skills.includes(category.toLowerCase()) || skills.includes("general"))
     );
   });
   return (
@@ -1594,7 +1585,6 @@ function TechnicianPicker({
           <option key={tech.id} value={tech.id}>
             {tech.user?.name ?? "Unnamed technician"} ·{" "}
             {(tech.skills ?? []).map((skill: any) => skill.name).join(", ")} ·{" "}
-            {tech.availability ?? "AVAILABLE"}
           </option>
         ))}
       </select>
